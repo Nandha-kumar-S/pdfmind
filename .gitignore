@@ -1,3 +1,4 @@
 env/
 input/
-pdf_parser.egg-info
+pdfmind.egg-info/
+.env

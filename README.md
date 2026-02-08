@@ -1,4 +1,4 @@
-# PDF Parser
+# PDFMind
 
 PDF parsing module for clinical protocol documents.
 
