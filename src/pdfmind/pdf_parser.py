@@ -1,30 +1,31 @@
-import json
 import re
 import copy
-import argparse
+import os
+import json
 import logging
-import sys
 from pathlib import Path
+from datetime import datetime    
 import traceback
 from tqdm import tqdm
 from docling.document_converter import DocumentConverter
+import markdown
+import pandas as pd
+import io
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# TODO: External dependency - requires 'ml' package
-from ml.scripts.core.llm import GenAIModel
-from ml.scripts.core.utils import get_prompt
+from utils.common_utils import get_prompt, save_file
+from utils.llm_utils.llm_service import LLMService
 
 class PDFParser:
-    def __init__(self, pdf_path):
-        self.ai_model = GenAIModel()
-        self.pdf_path = pdf_path
+    def __init__(self):
+        self.llm_service = LLMService()
 
-    def convert_pdf_to_markdown(self):
-        logging.info(f"Starting PDF to Markdown conversion for {self.pdf_path}")
+    def convert_pdf_to_markdown(self, pdf_path):
+        logging.info(f"Starting PDF to Markdown conversion for {pdf_path}")
         try:
-            source_path = Path(self.pdf_path)
+            source_path = Path(pdf_path)
             if not source_path.is_file():
                 raise FileNotFoundError(f"Source file not found: {source_path}")
 
@@ -51,17 +52,18 @@ class PDFParser:
             
             logging.info(f"Found {len(headings)} potential headings. Sending to AI model for structuring.")
             input_data = 'Headings from protocol document\n\n' + ', '.join(headings)
-            # print(input_data)
+            
             toc_prompt = get_prompt('TableOfContentsExtractor', input_data)
-            toc = self.ai_model.infer(toc_prompt)
-            # print(toc)
-            logging.info(f"Successfully generated ToC with {len(toc.get('toc', []))} top-level sections.")
+            toc = self.llm_service.infer_json(toc_prompt)
+            logging.info(
+                f"Successfully generated ToC with {len(toc.get('toc', []))} top-level sections."
+            )
             return toc
                     
         except Exception as e:
             logging.error(f"An unexpected error occurred during ToC extraction: {e}")
             print(traceback.print_exc())
-            return []
+            return {"toc": []}
 
     def _flatten_toc(self, toc_nodes, flat_list):
         """Recursively flattens the ToC structure into a single list."""
@@ -225,18 +227,87 @@ class PDFParser:
         non_toc_content = self._process_non_toc_chunks(header_chunk) + self._process_non_toc_chunks(footer_chunk)
         
         # Prepend non-ToC header content and append footer content
-        final_structure = {'toc': toc_copy['toc'], 'non_toc': non_toc_content}
+        semantic_parsed_pdf = {'toc': toc_copy['toc'], 'non_toc': non_toc_content}
 
-        return final_structure
+        return semantic_parsed_pdf
 
-    def parse(self):
+    def _extract_and_convert_tables(self, text):
+        """Extracts markdown tables from text and converts them to structured JSON format."""
+        # This regex looks for a header row, a separator row, and one or more body rows.
+        table_pattern = re.compile(r'(^\|.*\|$\n^\|[-|: ]+\|$\n(?:^\|.*\|$\n?)+)', re.MULTILINE)
+        
+        tables_json = []
+        non_table_text = text
+        
+        # Use a placeholder strategy to safely extract tables and text
+        matches = list(table_pattern.finditer(text))
+        for i, match in enumerate(reversed(matches)):
+            table_md = match.group(0)
+            placeholder = f"__TABLE_PLACEHOLDER_{i}__"
+            non_table_text = non_table_text[:match.start()] + placeholder + non_table_text[match.end():]
+
+            try:
+                html = markdown.markdown(table_md, extensions=['tables'])
+                df = pd.read_html(io.StringIO(html))[0]
+                df.fillna('', inplace=True)
+                
+                table_data = {
+                    'columns': [str(col) for col in df.columns],
+                    'data': df.values.tolist()
+                }
+                tables_json.insert(0, table_data) # Insert at the beginning to maintain order
+            except Exception as e:
+                logging.warning(f"Could not parse a markdown table. Error: {e}. Re-inserting as text.")
+                non_table_text = non_table_text.replace(placeholder, table_md)
+
+        # Clean up any remaining placeholders
+        for i in range(len(tables_json)):
+             non_table_text = non_table_text.replace(f"__TABLE_PLACEHOLDER_{i}__", "")
+                
+        return non_table_text.strip(), tables_json
+
+    def _recursively_process_tables(self, section_list):
+        """Recursively processes sections to extract tables from text content."""
+        for section in section_list:
+            original_text = section.get('text', '')
+            if original_text and '|' in original_text:
+                cleaned_text, cleaned_tables = self._extract_and_convert_tables(original_text)
+                section['text'] = cleaned_text
+                section['tables'] = cleaned_tables
+            else:
+                section['text'] = original_text
+                section['tables'] = []
+            
+            if 'text' in section:
+                del section['text']
+
+            if 'subsections' in section and section['subsections']:
+                self._recursively_process_tables(section['subsections'])
+        return section_list
+
+    def parse(self, pdf_path, save_intermediate_files=False):
         logging.info("Starting PDF parsing process")
-        markdown_file = self.convert_pdf_to_markdown()
-        # with open('output/lzzt/markdown.md', 'r') as file:
-        #     markdown_file = file.read()
 
+        # Convert PDF to markdown
+        markdown_file = self.convert_pdf_to_markdown(pdf_path)
+        
+        # Extract ToC from markdown
         toc_data = self.extract_toc(markdown_file)
-        final_structure = self.merge_toc_and_content(toc_data, markdown_file)
 
+        # Merge ToC with content
+        semantic_parsed_pdf = self.merge_toc_and_content(toc_data, markdown_file)
+
+        # Extract tables from document structure
+        logging.info("Extracting tables from document structure...")
+        semantic_parsed_pdf['toc'] = self._recursively_process_tables(semantic_parsed_pdf['toc'])
+        semantic_parsed_pdf['non_toc'] = self._recursively_process_tables(semantic_parsed_pdf['non_toc'])
+        
+        if save_intermediate_files:
+            output_dir = os.path.join('output', datetime.now().strftime('%Y_%m_%d_%H_%M_%S'))
+            os.makedirs(output_dir, exist_ok=True)
+
+            save_file(markdown_file, output_dir, 'markdown.md')
+            save_file(toc_data, output_dir, 'toc_data.json')
+            # save_file(semantic_parsed_pdf, output_dir, 'semantic_parsed_pdf.json')
         logging.info("PDF parsing process completed")
-        return markdown_file, final_structure
+        return semantic_parsed_pdf
