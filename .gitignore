@@ -1,4 +1,8 @@
 env/
-input/
-pdfmind.egg-info/
+
 .env
+*__pycache__
+
+input/*
+output/*
+

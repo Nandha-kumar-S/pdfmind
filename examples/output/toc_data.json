@@ -1,0 +1,448 @@
+{
+  "toc": [
+    {
+      "number": "1",
+      "title": "Introduction",
+      "subsections": [
+        {
+          "number": "1.1",
+          "title": "Background",
+          "subsections": []
+        },
+        {
+          "number": "1.2",
+          "title": "Purpose",
+          "subsections": []
+        }
+      ]
+    },
+    {
+      "number": "2",
+      "title": "Study objectives",
+      "subsections": [
+        {
+          "number": "2.1",
+          "title": "Primary objective",
+          "subsections": []
+        },
+        {
+          "number": "2.2",
+          "title": "Secondary objectives",
+          "subsections": []
+        }
+      ]
+    },
+    {
+      "number": "3",
+      "title": "Investigational plan",
+      "subsections": [
+        {
+          "number": "3.1",
+          "title": "Study design",
+          "subsections": []
+        },
+        {
+          "number": "3.2",
+          "title": "Rationale of study design",
+          "subsections": []
+        },
+        {
+          "number": "3.3",
+          "title": "Rationale of dose/regimen, duration of treatment",
+          "subsections": []
+        },
+        {
+          "number": "3.4",
+          "title": "Rationale for choice of comparator",
+          "subsections": []
+        },
+        {
+          "number": "3.5",
+          "title": "Purpose and timing of interim analyses/design adaptations",
+          "subsections": []
+        },
+        {
+          "number": "3.6",
+          "title": "Risks and benefits",
+          "subsections": []
+        }
+      ]
+    },
+    {
+      "number": "4",
+      "title": "Population",
+      "subsections": [
+        {
+          "number": "4.1",
+          "title": "Inclusion criteria",
+          "subsections": []
+        },
+        {
+          "number": "4.2",
+          "title": "Exclusion criteria",
+          "subsections": []
+        }
+      ]
+    },
+    {
+      "number": "5",
+      "title": "Patient Management",
+      "subsections": [
+        {
+          "number": "5.1",
+          "title": "Treatment",
+          "subsections": []
+        },
+        {
+          "number": "5.2",
+          "title": "Relapsed or re-infected patients",
+          "subsections": [
+            {
+              "number": "5.2.1",
+              "title": "Premature patient withdrawal",
+              "subsections": []
+            },
+            {
+              "number": "5.2.2",
+              "title": "Study completion and post-study treatment",
+              "subsections": []
+            },
+            {
+              "number": "5.2.3",
+              "title": "Early study termination",
+              "subsections": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "number": "6",
+      "title": "Visit schedule and assessments",
+      "subsections": [
+        {
+          "number": "6.1",
+          "title": "Information to be collected at visit 1",
+          "subsections": []
+        },
+        {
+          "number": "6.2",
+          "title": "Patient demographics/other baseline characteristics",
+          "subsections": [
+            {
+              "number": "6.2.1",
+              "title": "Demographic Information",
+              "subsections": []
+            },
+            {
+              "number": "6.2.2",
+              "title": "Baseline Characteristics",
+              "subsections": []
+            },
+            {
+              "number": "6.2.3",
+              "title": "Medical History",
+              "subsections": []
+            },
+            {
+              "number": "6.2.4",
+              "title": "Liver Fibrosis Evaluation",
+              "subsections": []
+            },
+            {
+              "number": "6.2.5",
+              "title": "Ultrasound evaluation",
+              "subsections": []
+            },
+            {
+              "number": "6.2.6",
+              "title": "Other baseline characteristics",
+              "subsections": []
+            }
+          ]
+        },
+        {
+          "number": "6.3",
+          "title": "Efficacy",
+          "subsections": [
+            {
+              "number": "6.3.1",
+              "title": "HCV RNA Viral Load",
+              "subsections": []
+            },
+            {
+              "number": "6.3.2",
+              "title": "Alanine-aminotransferase (ALT)",
+              "subsections": []
+            },
+            {
+              "number": "6.3.3",
+              "title": "HCV sequencing",
+              "subsections": []
+            },
+            {
+              "number": "6.3.4",
+              "title": "Genotyping and sub-typing",
+              "subsections": []
+            },
+            {
+              "number": "6.3.5",
+              "title": "Appropriateness of efficacy assessments",
+              "subsections": []
+            }
+          ]
+        },
+        {
+          "number": "6.4",
+          "title": "Safety",
+          "subsections": [
+            {
+              "number": "6.4.1",
+              "title": "Physical examination",
+              "subsections": []
+            },
+            {
+              "number": "6.4.2",
+              "title": "Vital signs",
+              "subsections": []
+            },
+            {
+              "number": "6.4.3",
+              "title": "Height and weight",
+              "subsections": []
+            },
+            {
+              "number": "6.4.4",
+              "title": "Laboratory evaluations",
+              "subsections": []
+            },
+            {
+              "number": "6.4.5",
+              "title": "FibroTest® and elastography",
+              "subsections": []
+            },
+            {
+              "number": "6.4.6",
+              "title": "Ultrasound",
+              "subsections": []
+            },
+            {
+              "number": "6.4.7",
+              "title": "Laboratory evaluations",
+              "subsections": [
+                {
+                  "number": "6.4.7.1",
+                  "title": "Hematology",
+                  "subsections": []
+                },
+                {
+                  "number": "6.4.7.2",
+                  "title": "Biochemistry",
+                  "subsections": []
+                },
+                {
+                  "number": "6.4.7.3",
+                  "title": "Coagulation testing",
+                  "subsections": []
+                },
+                {
+                  "number": "6.4.7.4",
+                  "title": "Alpha-fetoprotein",
+                  "subsections": []
+                }
+              ]
+            },
+            {
+              "number": "6.4.8",
+              "title": "Appropriateness of safety measurements",
+              "subsections": []
+            }
+          ]
+        },
+        {
+          "number": "6.5",
+          "title": "Other assessments",
+          "subsections": []
+        }
+      ]
+    },
+    {
+      "number": "7",
+      "title": "Safety monitoring",
+      "subsections": [
+        {
+          "number": "7.1",
+          "title": "Adverse events",
+          "subsections": []
+        },
+        {
+          "number": "7.2",
+          "title": "Serious adverse event reporting",
+          "subsections": []
+        },
+        {
+          "number": "7.3",
+          "title": "Pregnancy reporting",
+          "subsections": []
+        }
+      ]
+    },
+    {
+      "number": "8",
+      "title": "Data review and database management",
+      "subsections": [
+        {
+          "number": "8.1",
+          "title": "Site monitoring",
+          "subsections": []
+        },
+        {
+          "number": "8.2",
+          "title": "Data collection",
+          "subsections": []
+        },
+        {
+          "number": "8.3",
+          "title": "Database management and quality control",
+          "subsections": []
+        }
+      ]
+    },
+    {
+      "number": "9",
+      "title": "Data analysis",
+      "subsections": [
+        {
+          "number": "9.1",
+          "title": "Analysis sets",
+          "subsections": []
+        },
+        {
+          "number": "9.2",
+          "title": "Patient demographics and other baseline characteristics",
+          "subsections": []
+        },
+        {
+          "number": "9.3",
+          "title": "Treatments",
+          "subsections": []
+        },
+        {
+          "number": "9.4",
+          "title": "Analysis of the primary and key secondary variable(s)",
+          "subsections": [
+            {
+              "number": "9.4.1",
+              "title": "Variable(s)",
+              "subsections": []
+            },
+            {
+              "number": "9.4.2",
+              "title": "Statistical model, hypothesis, and method of analysis",
+              "subsections": []
+            },
+            {
+              "number": "9.4.3",
+              "title": "Handling of missing values/censoring/discontinuations",
+              "subsections": []
+            },
+            {
+              "number": "9.4.4",
+              "title": "Supportive Analyses",
+              "subsections": []
+            }
+          ]
+        },
+        {
+          "number": "9.5",
+          "title": "Analysis of secondary variables",
+          "subsections": [
+            {
+              "number": "9.5.1",
+              "title": "Efficacy variables",
+              "subsections": []
+            },
+            {
+              "number": "9.5.2",
+              "title": "Safety variables",
+              "subsections": []
+            }
+          ]
+        },
+        {
+          "number": "9.6",
+          "title": "Interim analyses",
+          "subsections": []
+        },
+        {
+          "number": "9.7",
+          "title": "Sample size calculation",
+          "subsections": []
+        }
+      ]
+    },
+    {
+      "number": "10",
+      "title": "Ethical considerations",
+      "subsections": [
+        {
+          "number": "10.1",
+          "title": "Regulatory and ethical compliance",
+          "subsections": []
+        },
+        {
+          "number": "10.2",
+          "title": "Informed consent procedures",
+          "subsections": []
+        },
+        {
+          "number": "10.3",
+          "title": "Responsibilities of the investigator and IRB/IEC",
+          "subsections": []
+        },
+        {
+          "number": "10.4",
+          "title": "Publication of study protocol and results",
+          "subsections": []
+        }
+      ]
+    },
+    {
+      "number": "11",
+      "title": "Protocol adherence",
+      "subsections": [
+        {
+          "number": "11.1",
+          "title": "Protocol Amendments",
+          "subsections": []
+        }
+      ]
+    },
+    {
+      "number": "12",
+      "title": "References",
+      "subsections": []
+    },
+    {
+      "number": "13",
+      "title": "Appendices",
+      "subsections": [
+        {
+          "number": "Appendix 1",
+          "title": "Clinically notable laboratory values and vital signs",
+          "subsections": []
+        },
+        {
+          "number": "Appendix 2",
+          "title": "Sample log",
+          "subsections": []
+        },
+        {
+          "number": "Table 13-1",
+          "title": "Sample Numbering",
+          "subsections": []
+        }
+      ]
+    }
+  ]
+}

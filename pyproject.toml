@@ -17,6 +17,10 @@ dependencies = [
     "tqdm",
     "pandas",
     "markdown",
+    "langchain",
+    "langchain-openai",
+    "langchain-google-genai",
+    "python-dotenv",
 ]
 
 [project.optional-dependencies]
@@ -27,8 +31,8 @@ dev = [
 ]
 
 [tool.setuptools.packages.find]
-where = ["."]
-include = ["parser*"]
+where = ["src"]
+include = ["pdfmind*", "utils*"]
 
 [tool.black]
 line-length = 100
