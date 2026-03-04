@@ -2,7 +2,7 @@ import json
 import os
 import logging
 
-from pdfmind.prompts import TableOfContentsExtractor
+from ..prompts import TableOfContentsExtractor
 
 logger = logging.getLogger(__name__)
 
