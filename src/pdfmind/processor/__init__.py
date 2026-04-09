@@ -2,7 +2,7 @@
 PDFMind Processor Modules
 
 This package contains specialized processors for different aspects of PDF parsing:
-- TOCProcessor: Handles Table of Contents extraction and processing
+- TOCProcessor: Handles Table of Contents extraction and processing (with Python fallback)
 - TableProcessor: Handles table extraction and conversion
 - ImageProcessor: Handles image extraction and processing (placeholder for future implementation)
 """

@@ -54,9 +54,6 @@ class TableProcessor:
             else:
                 section['text'] = original_text
                 section['tables'] = []
-            
-            if 'text' in section:
-                del section['text']
 
             if 'subsections' in section and section['subsections']:
                 self.recursively_process_tables(section['subsections'])

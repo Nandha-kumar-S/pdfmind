@@ -3,6 +3,7 @@ import copy
 import logging
 from tqdm import tqdm
 import traceback
+from typing import List, Dict, Any
 
 from ..utils.common_utils import get_prompt
 
@@ -10,36 +11,181 @@ from ..utils.common_utils import get_prompt
 class TOCProcessor:
     """Handles Table of Contents extraction, processing, and content mapping."""
     
-    def __init__(self, llm_service):
+    def __init__(self, llm_service, toc_extraction_method: str = "auto", 
+                 max_heading_levels: int = 4, llm_timeout: int = 30):
         self.llm_service = llm_service
+        
+        # Configuration parameters
+        # "llm": Use AI model for extraction
+        # "pattern_based": Use regex patterns for numerical headings
+        # "auto": Try LLM first, fall back to pattern_based if fails
+        self.toc_extraction_method = toc_extraction_method
+        self.max_heading_levels = max_heading_levels
+        self.llm_timeout = llm_timeout
+        
+        self.logger = logging.getLogger(__name__)
+        
+        # Compile regex patterns for different heading levels
+        self.heading_patterns = [
+            (r'^(\d+)\s+(.+)$', 1),           # 1 Title
+            (r'^(\d+\.\d+)\s+(.+)$', 2),       # 1.1 Title  
+            (r'^(\d+\.\d+\.\d+)\s+(.+)$', 3),   # 1.1.1 Title
+            (r'^(\d+\.\d+\.\d+\.\d+)\s+(.+)$', 4) # 1.1.1.1 Title
+        ]
     
     def extract_toc(self, markdown_file):
         """Extracts and structures Table of Contents from markdown content."""
-        heading_pattern = re.compile(r"^\s*(?:##)\s+(.*)")
-        headings = []
+        return self.extract_toc_with_fallback(markdown_file)
+    
+    def extract_toc_with_fallback(self, markdown_file):
+        """Extract TOC with LLM and Python fallback."""
+        # Use pattern-based method if explicitly configured
+        if self.toc_extraction_method == "pattern_based":
+            self.logger.info("Using pattern-based TOC extraction (configured)")
+            return self._extract_toc_with_python(markdown_file)
+        
+        # Try LLM first for "auto" or "llm" methods
+        if self.toc_extraction_method in ["auto", "llm"]:
+            try:
+                return self._extract_toc_with_llm(markdown_file)
+            except Exception as e:
+                if self.toc_extraction_method == "auto":
+                    self.logger.warning(f"LLM TOC extraction failed: {e}")
+                    self.logger.info("Falling back to Python-based extraction")
+                    return self._extract_toc_with_python(markdown_file)
+                else:
+                    # toc_extraction_method == "llm" - no fallback, raise the error
+                    self.logger.error(f"LLM TOC extraction failed: {e}")
+                    raise
+        
+        # If toc_extraction_method is invalid
+        self.logger.error(f"Invalid TOC extraction method: {self.toc_extraction_method}")
+        return {"toc": []}
+    
+    def _extract_toc_with_python(self, markdown_file: str) -> Dict[str, Any]:
+        """
+        Extract TOC from markdown using Python-based numerical heading detection.
 
+        Args:
+            markdown_file: Markdown content as string
+
+        Returns:
+            Dictionary with 'toc' key containing hierarchical structure
+        """
         try:
-            lines_list = markdown_file.splitlines()
-            for line in lines_list:
-                match = heading_pattern.match(line)
-                if match:
-                    heading_text = match.group(1).strip()
-                    headings.append(heading_text)
-            
-            logging.info(f"Found {len(headings)} potential headings. Sending to AI model for structuring.")
-            input_data = 'Headings from protocol document\n\n' + ', '.join(headings)
-            
-            toc_prompt = get_prompt('TableOfContentsExtractor', input_data)
-            toc = self.llm_service.infer_json(toc_prompt)
-            logging.info(
-                f"Successfully generated ToC with {len(toc.get('toc', []))} top-level sections."
-            )
-            return toc
-                    
+            method_name = "pattern-based" if self.toc_extraction_method == "pattern_based" else "Python-based"
+            self.logger.info(f"Starting {method_name} TOC extraction")
+
+            # Extract headings from markdown
+            headings = self._extract_numerical_headings(markdown_file)
+
+            if not headings:
+                self.logger.warning(f"No numerical headings found for {method_name} extraction")
+                return {"toc": []}
+
+            # Build hierarchical structure
+            toc_structure = self._build_hierarchy(headings)
+
+            self.logger.info(f"Successfully extracted TOC with {len(toc_structure)} top-level sections")
+            return {"toc": toc_structure}
+
         except Exception as e:
-            logging.error(f"An unexpected error occurred during ToC extraction: {e}")
-            print(traceback.print_exc())
+            method_name = "pattern-based" if self.toc_extraction_method == "pattern_based" else "Python-based"
+            self.logger.error(f"{method_name} TOC extraction failed: {e}")
+            return {"toc": [], "extraction_method": f"{method_name}_failed", "error": str(e)}
+    
+    def _extract_numerical_headings(self, markdown_file: str) -> List[Dict[str, Any]]:
+        """Extract numerical headings with their levels and content."""
+        headings = []
+        lines = markdown_file.splitlines()
+        
+        for line in lines:
+            
+            line = line.strip()
+            if not line.startswith('## '):
+                continue
+                
+            # Remove ## prefix and clean
+            heading_text = line[3:].strip()
+            
+            # Try each pattern to determine level and extract number
+            for pattern, level in self.heading_patterns:
+                if level > self.max_heading_levels:
+                    continue
+                    
+                match = re.match(pattern, heading_text)
+                if match:
+                    number = match.group(1)
+                    title = match.group(2).strip()
+                    
+                    headings.append({
+                        'number': number,
+                        'title': title,
+                        'level': level,
+                        'subsections': []
+                    })
+                    break
+        
+        return headings
+    
+    def _build_hierarchy(self, headings: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Build hierarchical TOC structure from flat heading list."""
+        if not headings:
+            return []
+        
+        # Sort by original order (maintain document sequence)
+        toc_structure = []
+        stack = []  # Stack to track parent relationships
+        
+        for heading in headings:
+            level = heading['level']
+            
+            # Pop from stack until we find appropriate parent
+            while stack and stack[-1]['level'] >= level:
+                stack.pop()
+            
+            # Add to parent if exists, otherwise it's a top-level section
+            if stack:
+                parent = stack[-1]
+                parent['subsections'].append(heading)
+            else:
+                toc_structure.append(heading)
+            
+            # Add current heading to stack
+            stack.append(heading)
+        
+        # Clean up the structure - remove temporary level fields
+        self._clean_structure(toc_structure)
+        
+        return toc_structure
+    
+    def _clean_structure(self, items: List[Dict[str, Any]]) -> None:
+        """Remove temporary fields from TOC structure recursively."""
+        for item in items:
+            if 'level' in item:
+                del item['level']
+            if 'subsections' in item and item['subsections']:
+                self._clean_structure(item['subsections'])
+    
+    def _extract_toc_with_llm(self, markdown_file):
+        """Extract TOC using LLM service."""
+        # Use numerical heading filtering to only send relevant headings to LLM
+        headings_data = self._extract_numerical_headings(markdown_file)
+        headings = [h['title'] for h in headings_data]
+
+        if not headings:
+            self.logger.warning("No numerical headings found for LLM extraction")
             return {"toc": []}
+
+        self.logger.info(f"Found {len(headings)} numerical headings. Sending to AI model for structuring.")
+        input_data = 'Headings from protocol document\n\n' + ', '.join(headings)
+
+        toc_prompt = get_prompt('TableOfContentsExtractor', input_data)
+        toc = self.llm_service.infer_json(toc_prompt)
+        self.logger.info(
+            f"Successfully generated ToC with {len(toc.get('toc', []))} top-level sections."
+        )
+        return toc
 
     def _flatten_toc(self, toc_nodes, flat_list):
         """Recursively flattens the ToC structure into a single list."""
@@ -129,7 +275,6 @@ class TOCProcessor:
 
         for line in tqdm(markdown_lines, desc="   Extracting content", unit="line", leave=False):
             is_any_heading = line.strip().startswith('## ')
-
             # Check if the line is a known ToC heading
             matched_toc_heading = None
             if is_any_heading:
