@@ -13,9 +13,15 @@ from .utils.llm_utils.llm_service import LLMService
 from .processor import TOCProcessor, TableProcessor, ImageProcessor
 
 class PDFParser:
-    def __init__(self):
+    def __init__(self, toc_extraction_method: str = "auto", 
+                 max_heading_levels: int = 4, llm_timeout: int = 30):
         self.llm_service = LLMService()
-        self.toc_processor = TOCProcessor(self.llm_service)
+        self.toc_processor = TOCProcessor(
+            self.llm_service, 
+            toc_extraction_method=toc_extraction_method,
+            max_heading_levels=max_heading_levels,
+            llm_timeout=llm_timeout
+        )
         self.table_processor = TableProcessor()
         self.image_processor = ImageProcessor()
 

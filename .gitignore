@@ -6,3 +6,4 @@ env/
 input/*
 output/*
 
+notebooks/output/*
