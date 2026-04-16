@@ -19,7 +19,7 @@
    - Configuration via CLI flags and/or config files
 
 ## Enhancements
-1. **TOC Extraction**
+1. **TOC Extraction** - done
    - Fallback to Python-based TOC generation using numerical headings
    - Improve accuracy of heading level detection
 
@@ -32,11 +32,11 @@
    - Better error messages and logging
 
 ## Performance
-1. **TOC Processing**
+1. **TOC Processing** - done
    - Optimize LLM input by sending only numerical headings
 
 ## Style & Structure
-1. **Code Organization**
+1. **Code Organization** - done
    - Split large files into logical modules
    - Create separate modules for TOC, table, and image processing as needed
 
