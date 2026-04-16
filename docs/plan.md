@@ -50,3 +50,10 @@
    - `anthropic` for Claude API
    - `pytest` for testing
    - `pytest-mock` for mocking
+
+4. **Pre-commit Hooks**
+   - Install and configure pre-commit hooks to automatically run linting and formatting checks before each commit
+   - Add [Ruff](https://github.com/astral-sh/ruff) as pre-commit hook to enforce consistent code formatting
+   - Step 1: Install it: pip install ruff
+   - Step 2: Add a .pre-commit-config.yaml file to your root.
+   - Step 3: Run pre-commit install.
