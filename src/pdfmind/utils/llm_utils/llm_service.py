@@ -1,11 +1,14 @@
 import json
 import os
+import logging
 from typing import Any, Optional
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_openai import AzureChatOpenAI
 from langchain_google_genai import ChatGoogleGenerativeAI
 from dotenv import load_dotenv
+
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 
@@ -91,8 +94,11 @@ class LLMService:
         raw = (getattr(resp, "content", "") or "").strip()
         raw = self._strip_code_fences(raw)
         try:
-            return json.loads(raw)
-        except json.JSONDecodeError:
+            parsed = json.loads(raw)
+            return parsed
+        except json.JSONDecodeError as e:
+            logger.error(f"LLM JSON decode error: {e}")
+            logger.error(f"Failed to parse raw response: {raw}")
             return {"toc": []}
 
     @staticmethod
