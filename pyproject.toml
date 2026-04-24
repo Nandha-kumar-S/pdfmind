@@ -21,6 +21,7 @@ dependencies = [
     "langchain-openai",
     "langchain-google-genai",
     "python-dotenv",
+    "pymupdf",
 ]
 
 [project.optional-dependencies]
