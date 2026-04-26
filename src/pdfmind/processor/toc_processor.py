@@ -4,6 +4,7 @@ import logging
 from tqdm import tqdm
 import traceback
 from typing import List, Dict, Any
+from pathlib import Path
 
 from ..utils.common_utils import get_prompt
 
@@ -11,10 +12,10 @@ from ..utils.common_utils import get_prompt
 class TOCProcessor:
     """Handles Table of Contents extraction, processing, and content mapping."""
     
-    def __init__(self, llm_service, toc_extraction_method: str = "auto", 
+    def __init__(self, llm_service, toc_extraction_method: str = "auto",
                  max_heading_levels: int = 4, llm_timeout: int = 30):
         self.llm_service = llm_service
-        
+
         # Configuration parameters
         # "llm": Use AI model for extraction
         # "pattern_based": Use regex patterns for numerical headings
@@ -22,16 +23,8 @@ class TOCProcessor:
         self.toc_extraction_method = toc_extraction_method
         self.max_heading_levels = max_heading_levels
         self.llm_timeout = llm_timeout
-        
+
         self.logger = logging.getLogger(__name__)
-        
-        # Compile regex patterns for different heading levels
-        self.heading_patterns = [
-            (r'^(\d+)\s+(.+)$', 1),           # 1 Title
-            (r'^(\d+\.\d+)\s+(.+)$', 2),       # 1.1 Title  
-            (r'^(\d+\.\d+\.\d+)\s+(.+)$', 3),   # 1.1.1 Title
-            (r'^(\d+\.\d+\.\d+\.\d+)\s+(.+)$', 4) # 1.1.1.1 Title
-        ]
     
     def extract_toc(self, markdown_file):
         """Extracts and structures Table of Contents from markdown content."""
@@ -65,6 +58,8 @@ class TOCProcessor:
     def _extract_toc_with_python(self, markdown_file: str) -> Dict[str, Any]:
         """
         Extract TOC from markdown using Python-based numerical heading detection.
+        Note: This now uses the same flexible extraction as LLM mode but without LLM structuring.
+        For pattern-based mode, we return flat list since we can't determine hierarchy without LLM.
 
         Args:
             markdown_file: Markdown content as string
@@ -83,11 +78,21 @@ class TOCProcessor:
                 self.logger.warning(f"No numerical headings found for {method_name} extraction")
                 return {"toc": []}
 
-            # Build hierarchical structure
-            toc_structure = self._build_hierarchy(headings)
+            # For pattern-based mode, we can't determine hierarchy without LLM
+            # Return flat structure with level=1 for all
+            for heading in headings:
+                heading['level'] = 1
 
-            self.logger.info(f"Successfully extracted TOC with {len(toc_structure)} top-level sections")
-            return {"toc": toc_structure}
+            # Build hierarchical structure (flat since no hierarchy info)
+            toc_structure = headings
+
+            # Add coordinates using docling if available
+            toc_result = {"toc": toc_structure}
+            if hasattr(self, 'docling_document') and self.docling_document:
+                toc_result = self._add_section_coordinates_from_docling(toc_result, self.docling_document)
+
+            self.logger.info(f"Successfully extracted TOC with {len(toc_structure)} top-level sections (flat structure)")
+            return toc_result
 
         except Exception as e:
             method_name = "pattern-based" if self.toc_extraction_method == "pattern_based" else "Python-based"
@@ -95,37 +100,35 @@ class TOCProcessor:
             return {"toc": [], "extraction_method": f"{method_name}_failed", "error": str(e)}
     
     def _extract_numerical_headings(self, markdown_file: str) -> List[Dict[str, Any]]:
-        """Extract numerical headings with their levels and content."""
+        """
+        Extract numerical headings with their levels and content.
+        Flexible approach: extract any ## heading that contains both numbers and text.
+        """
         headings = []
         lines = markdown_file.splitlines()
-        
+
         for line in lines:
-            
+
             line = line.strip()
             if not line.startswith('## '):
                 continue
-                
+
             # Remove ## prefix and clean
             heading_text = line[3:].strip()
-            
-            # Try each pattern to determine level and extract number
-            for pattern, level in self.heading_patterns:
-                if level > self.max_heading_levels:
-                    continue
-                    
-                match = re.match(pattern, heading_text)
-                if match:
-                    number = match.group(1)
-                    title = match.group(2).strip()
-                    
-                    headings.append({
-                        'number': number,
-                        'title': title,
-                        'level': level,
-                        'subsections': []
-                    })
-                    break
-        
+
+            # Check if heading contains both numbers and text (flexible matching)
+            has_number = bool(re.search(r'\d', heading_text))
+            has_text = bool(re.search(r'[a-zA-Z]', heading_text))
+
+            if has_number and has_text:
+                # Extract the full heading as-is for LLM to structure
+                headings.append({
+                    'number': None,  # LLM will determine numbering
+                    'title': heading_text,
+                    'level': None,  # LLM will determine hierarchy
+                    'subsections': []
+                })
+
         return headings
     
     def _build_hierarchy(self, headings: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -166,11 +169,216 @@ class TOCProcessor:
                 del item['level']
             if 'subsections' in item and item['subsections']:
                 self._clean_structure(item['subsections'])
+
+    def _add_section_coordinates_from_docling(self, toc_data: Dict[str, Any], docling_document) -> Dict[str, Any]:
+        """
+        Add page numbers and y-coordinates to TOC sections using docling's document structure.
+
+        Args:
+            toc_data: Dictionary with 'toc' key containing hierarchical structure
+            docling_document: DoclingDocument object with provenance information
+
+        Returns:
+            Updated toc_data with start_page and start_y for each section
+        """
+        if not docling_document:
+            self.logger.warning("Docling document not provided, skipping coordinate tracking")
+            return toc_data
+
+        try:
+            # Extract all section headers from docling document
+            section_headers = []
+            item_labels = set()
+
+            for item_tuple in docling_document.iterate_items():
+                # iterate_items returns tuples (item, parent_ref)
+                # Extract the actual item from the tuple
+                if isinstance(item_tuple, tuple) and len(item_tuple) > 0:
+                    item = item_tuple[0]
+                else:
+                    item = item_tuple
+
+                self.logger.debug(f"Item type: {type(item)}, attributes: {dir(item)[:10]}")
+                if hasattr(item, 'label'):
+                    item_labels.add(str(item.label))
+                    self.logger.debug(f"  Item label: {item.label}, text: {getattr(item, 'text', 'N/A')[:50]}")
+                if hasattr(item, 'label') and str(item.label) == 'section_header':
+                    # Get provenance information
+                    if hasattr(item, 'prov') and item.prov:
+                        for prov in item.prov:
+                            section_headers.append({
+                                'text': item.text,
+                                'page_no': prov.page_no,
+                                'bbox': prov.bbox
+                            })
+                            break
+
+            self.logger.info(f"Docling item labels found: {sorted(item_labels)}")
+
+            # Sort by page number and y-coordinate
+            section_headers.sort(key=lambda x: (x['page_no'], x['bbox'].l if x['bbox'] else 0))
+
+            self.logger.info(f"Found {len(section_headers)} section headers in docling document")
+            for i, header in enumerate(section_headers[:5]):  # Log first 5
+                self.logger.debug(f"  Docling header {i}: '{header['text']}' on page {header['page_no']}")
+
+            # Create a mapping of heading text to coordinates
+            heading_coords = {}
+            for header in section_headers:
+                heading_coords[header['text']] = {
+                    'page': header['page_no'] + 1,  # Convert to 1-indexed
+                    'y': header['bbox'].l if header['bbox'] else 0  # y0 coordinate
+                }
+
+            # Flatten TOC to get all sections
+            flat_sections = []
+
+            def collect_sections(sections):
+                for section in sections:
+                    flat_sections.append(section)
+                    if 'subsections' in section and section['subsections']:
+                        collect_sections(section['subsections'])
+
+            collect_sections(toc_data.get('toc', []))
+
+            self.logger.info(f"Trying to match {len(flat_sections)} TOC sections to docling headers")
+
+            # Assign coordinates to sections
+            matched = 0
+            for section in flat_sections:
+                heading_text = section.get('title', '')
+                if heading_text in heading_coords:
+                    section['start_page'] = heading_coords[heading_text]['page']
+                    section['start_y'] = heading_coords[heading_text]['y']
+                    matched += 1
+                else:
+                    # Try with number prefix
+                    if section.get('number'):
+                        numbered_heading = f"{section['number']} {heading_text}"
+                        if numbered_heading in heading_coords:
+                            section['start_page'] = heading_coords[numbered_heading]['page']
+                            section['start_y'] = heading_coords[numbered_heading]['y']
+                            matched += 1
+                        else:
+                            self.logger.debug(f"  No match for TOC section: '{numbered_heading}'")
+                    else:
+                        self.logger.debug(f"  No match for TOC section: '{heading_text}'")
+
+            self.logger.info(f"Successfully added coordinates to {matched}/{len(flat_sections)} TOC sections using docling")
+            return toc_data
+
+        except Exception as e:
+            self.logger.error(f"Error adding coordinates from docling: {e}")
+            return toc_data
+
+    def _add_section_coordinates(self, toc_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Add page numbers and y-coordinates to TOC sections using PyMuPDF.
+
+        Args:
+            toc_data: Dictionary with 'toc' key containing hierarchical structure
+
+        Returns:
+            Updated toc_data with start_page and start_y for each section
+        """
+        if not self.pdf_path or not Path(self.pdf_path).exists():
+            self.logger.warning("PDF path not provided or invalid, skipping coordinate tracking")
+            return toc_data
+
+        try:
+            import fitz  # PyMuPDF
+        except ImportError:
+            self.logger.warning("PyMuPDF not installed, skipping coordinate tracking")
+            return toc_data
+
+        try:
+            doc = fitz.open(self.pdf_path)
+            flat_sections = []
+
+            # Flatten TOC to get all sections
+            def collect_sections(sections):
+                for section in sections:
+                    flat_sections.append(section)
+                    if 'subsections' in section and section['subsections']:
+                        collect_sections(section['subsections'])
+
+            collect_sections(toc_data.get('toc', []))
+
+            # For each section, find its position in the PDF
+            # Search sequentially - each section only searches after the previous section
+            current_page = 0
+            current_y = 0
+
+            for section in flat_sections:
+                # Search for the heading text in the PDF
+                heading_text = section.get('title', '')
+                if not heading_text:
+                    continue
+
+                # Try to find the heading with its number
+                search_text = heading_text
+                if section.get('number'):
+                    search_text = f"{section['number']} {heading_text}"
+
+                found = False
+                # Start search from current page
+                for page_num in range(current_page, len(doc)):
+                    page = doc[page_num]
+                    # Search for the text
+                    text_instances = page.search_for(search_text)
+
+                    # Filter matches to only those after current_y if on same page
+                    if page_num == current_page:
+                        text_instances = [bbox for bbox in text_instances if bbox[1] >= current_y]
+
+                    if text_instances:
+                        # Use the first match (sorted by y position)
+                        text_instances.sort(key=lambda x: x[1])
+                        bbox = text_instances[0]
+                        section['start_page'] = page_num + 1  # 1-indexed
+                        section['start_y'] = bbox[1]  # y0 coordinate
+                        current_page = page_num
+                        current_y = bbox[1]
+                        found = True
+                        break
+
+                if not found:
+                    # Try searching without number
+                    for page_num in range(current_page, len(doc)):
+                        page = doc[page_num]
+                        text_instances = page.search_for(heading_text)
+
+                        if page_num == current_page:
+                            text_instances = [bbox for bbox in text_instances if bbox[1] >= current_y]
+
+                        if text_instances:
+                            text_instances.sort(key=lambda x: x[1])
+                            bbox = text_instances[0]
+                            section['start_page'] = page_num + 1
+                            section['start_y'] = bbox[1]
+                            current_page = page_num
+                            current_y = bbox[1]
+                            found = True
+                            break
+
+                    # If still not found, set defaults
+                    if not found:
+                        section['start_page'] = current_page + 1
+                        section['start_y'] = 0
+
+            doc.close()
+            self.logger.info("Successfully added coordinates to TOC sections")
+            return toc_data
+
+        except Exception as e:
+            self.logger.error(f"Error adding coordinates to TOC: {e}")
+            return toc_data
     
     def _extract_toc_with_llm(self, markdown_file):
         """Extract TOC using LLM service."""
         # Use numerical heading filtering to only send relevant headings to LLM
         headings_data = self._extract_numerical_headings(markdown_file)
+        # Send full heading text to LLM for flexible structuring
         headings = [h['title'] for h in headings_data]
 
         if not headings:
@@ -182,6 +390,9 @@ class TOCProcessor:
 
         toc_prompt = get_prompt('TableOfContentsExtractor', input_data)
         toc = self.llm_service.infer_json(toc_prompt)
+        # Add coordinates using docling if available
+        if hasattr(self, 'docling_document') and self.docling_document:
+            toc = self._add_section_coordinates_from_docling(toc, self.docling_document)
         self.logger.info(
             f"Successfully generated ToC with {len(toc.get('toc', []))} top-level sections."
         )
